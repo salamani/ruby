@@ -21,7 +21,7 @@ language: c
 
 os: linux
 
-dist: xenial
+dist: bionic
 
 git:
   quiet: true
@@ -150,12 +150,10 @@ env:
         libffi-dev:i386
         libffi6:i386
         libgdbm-dev:i386
-        libgdbm3:i386
         libncurses5-dev:i386
         libncurses5:i386
         libncursesw5-dev:i386
-        libreadline6-dev:i386
-        libreadline6:i386
+        libreadline-dev:i386
         libssl-dev:i386
         libssl1.0.0:i386
         linux-libc-dev:i386
