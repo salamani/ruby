@@ -146,6 +146,8 @@ env:
         gcc-8-multilib
         g++-8
         g++-8-multilib
+        libubsan1 
+        libgcc-8-dev
         libstdc++-8-dev:i386
         libffi-dev:i386
         libffi6:i386
