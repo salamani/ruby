@@ -120,10 +120,10 @@ env:
     arch: arm64
     <<: *gcc-8
 
-  - &s390x-linux
-    name: s390x-linux
-    arch: s390x
-    <<: *gcc-8
+  #- &s390x-linux
+  #  name: s390x-linux
+  #  arch: s390x
+  #  <<: *gcc-8
 
   - &i686-linux
     name: i686-linux
@@ -148,6 +148,9 @@ env:
         g++-8-multilib
         libubsan1 
         libgcc-8-dev
+        libasyncns-dev
+        libasyncns0
+        libsocket-getaddrinfo-perl
         libstdc++-8-dev:i386
         libffi-dev:i386
         libffi6:i386
