@@ -150,7 +150,6 @@ env:
         libgcc-8-dev:i386
         libasyncns-dev:i386
         libasyncns0:i386
-        libsocket-getaddrinfo-perl:i386
         libstdc++-8-dev:i386
         libffi-dev:i386
         libffi6:i386
