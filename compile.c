@@ -4883,9 +4883,13 @@ static void
 defined_expr(rb_iseq_t *iseq, LINK_ANCHOR *const ret,
 	     const NODE *const node, LABEL **lfinish, VALUE needstr);
 
+static int
+compile_call(rb_iseq_t *iseq, LINK_ANCHOR *const ret, const NODE *const node, const enum node_type type, int line, int popped, bool assume_receiver);
+
 static void
 defined_expr0(rb_iseq_t *iseq, LINK_ANCHOR *const ret,
-	      const NODE *const node, LABEL **lfinish, VALUE needstr)
+              const NODE *const node, LABEL **lfinish, VALUE needstr,
+              bool keep_result)
 {
     enum defined_type expr_type = DEFINED_NOT_DEFINED;
     enum node_type type;
@@ -4911,7 +4915,7 @@ defined_expr0(rb_iseq_t *iseq, LINK_ANCHOR *const ret,
 	const NODE *vals = node;
 
 	do {
-	    defined_expr0(iseq, ret, vals->nd_head, lfinish, Qfalse);
+            defined_expr0(iseq, ret, vals->nd_head, lfinish, Qfalse, false);
 
 	    if (!lfinish[1]) {
                 lfinish[1] = NEW_LABEL(line);
@@ -4935,46 +4939,51 @@ defined_expr0(rb_iseq_t *iseq, LINK_ANCHOR *const ret,
 	expr_type = DEFINED_LVAR;
 	break;
 
+#define PUSH_VAL(type) (needstr == Qfalse ? Qtrue : rb_iseq_defined_string(type))
       case NODE_IVAR:
         ADD_INSN(ret, line, putnil);
         ADD_INSN3(ret, line, defined, INT2FIX(DEFINED_IVAR),
-		  ID2SYM(node->nd_vid), needstr);
+		  ID2SYM(node->nd_vid), PUSH_VAL(DEFINED_IVAR));
         return;
 
       case NODE_GVAR:
         ADD_INSN(ret, line, putnil);
         ADD_INSN3(ret, line, defined, INT2FIX(DEFINED_GVAR),
-		  ID2SYM(node->nd_entry), needstr);
+		  ID2SYM(node->nd_entry), PUSH_VAL(DEFINED_GVAR));
         return;
 
       case NODE_CVAR:
         ADD_INSN(ret, line, putnil);
         ADD_INSN3(ret, line, defined, INT2FIX(DEFINED_CVAR),
-		  ID2SYM(node->nd_vid), needstr);
+		  ID2SYM(node->nd_vid), PUSH_VAL(DEFINED_CVAR));
         return;
 
       case NODE_CONST:
         ADD_INSN(ret, line, putnil);
         ADD_INSN3(ret, line, defined, INT2FIX(DEFINED_CONST),
-		  ID2SYM(node->nd_vid), needstr);
+		  ID2SYM(node->nd_vid), PUSH_VAL(DEFINED_CONST));
         return;
       case NODE_COLON2:
 	if (!lfinish[1]) {
             lfinish[1] = NEW_LABEL(line);
 	}
-	defined_expr0(iseq, ret, node->nd_head, lfinish, Qfalse);
+        defined_expr0(iseq, ret, node->nd_head, lfinish, Qfalse, false);
         ADD_INSNL(ret, line, branchunless, lfinish[1]);
         NO_CHECK(COMPILE(ret, "defined/colon2#nd_head", node->nd_head));
 
-        ADD_INSN3(ret, line, defined,
-		  (rb_is_const_id(node->nd_mid) ?
-		   INT2FIX(DEFINED_CONST_FROM) : INT2FIX(DEFINED_METHOD)),
-		  ID2SYM(node->nd_mid), needstr);
+        if (rb_is_const_id(node->nd_mid)) {
+            ADD_INSN3(ret, line, defined, INT2FIX(DEFINED_CONST_FROM),
+                    ID2SYM(node->nd_mid), PUSH_VAL(DEFINED_CONST));
+        }
+        else {
+            ADD_INSN3(ret, line, defined, INT2FIX(DEFINED_METHOD),
+                    ID2SYM(node->nd_mid), PUSH_VAL(DEFINED_METHOD));
+        }
         return;
       case NODE_COLON3:
         ADD_INSN1(ret, line, putobject, rb_cObject);
         ADD_INSN3(ret, line, defined,
-		  INT2FIX(DEFINED_CONST_FROM), ID2SYM(node->nd_mid), needstr);
+		  INT2FIX(DEFINED_CONST_FROM), ID2SYM(node->nd_mid), PUSH_VAL(DEFINED_CONST));
         return;
 
 	/* method dispatch */
@@ -4987,24 +4996,47 @@ defined_expr0(rb_iseq_t *iseq, LINK_ANCHOR *const ret,
 	    (type == NODE_CALL || type == NODE_OPCALL ||
 	     (type == NODE_ATTRASGN && !private_recv_p(node)));
 
-	if (!lfinish[1] && (node->nd_args || explicit_receiver)) {
-            lfinish[1] = NEW_LABEL(line);
-	}
+        if (node->nd_args || explicit_receiver) {
+            if (!lfinish[1]) {
+                lfinish[1] = NEW_LABEL(line);
+            }
+            if (!lfinish[2]) {
+                lfinish[2] = NEW_LABEL(line);
+            }
+        }
 	if (node->nd_args) {
-	    defined_expr0(iseq, ret, node->nd_args, lfinish, Qfalse);
+            defined_expr0(iseq, ret, node->nd_args, lfinish, Qfalse, false);
             ADD_INSNL(ret, line, branchunless, lfinish[1]);
 	}
 	if (explicit_receiver) {
-	    defined_expr0(iseq, ret, node->nd_recv, lfinish, Qfalse);
-            ADD_INSNL(ret, line, branchunless, lfinish[1]);
-            NO_CHECK(COMPILE(ret, "defined/recv", node->nd_recv));
+            defined_expr0(iseq, ret, node->nd_recv, lfinish, Qfalse, true);
+            switch(nd_type(node->nd_recv)) {
+              case NODE_CALL:
+              case NODE_OPCALL:
+              case NODE_VCALL:
+              case NODE_FCALL:
+              case NODE_ATTRASGN:
+                ADD_INSNL(ret, line, branchunless, lfinish[2]);
+                compile_call(iseq, ret, node->nd_recv, nd_type(node->nd_recv), line, 0, true);
+                break;
+              default:
+                ADD_INSNL(ret, line, branchunless, lfinish[1]);
+                NO_CHECK(COMPILE(ret, "defined/recv", node->nd_recv));
+                break;
+            }
+            if (keep_result) {
+                ADD_INSN(ret, line, dup);
+            }
             ADD_INSN3(ret, line, defined, INT2FIX(DEFINED_METHOD),
-		      ID2SYM(node->nd_mid), needstr);
+		      ID2SYM(node->nd_mid), PUSH_VAL(DEFINED_METHOD));
 	}
 	else {
             ADD_INSN(ret, line, putself);
+            if (keep_result) {
+                ADD_INSN(ret, line, dup);
+            }
             ADD_INSN3(ret, line, defined, INT2FIX(DEFINED_FUNC),
-		      ID2SYM(node->nd_mid), needstr);
+		      ID2SYM(node->nd_mid), PUSH_VAL(DEFINED_METHOD));
 	}
         return;
       }
@@ -5012,7 +5044,7 @@ defined_expr0(rb_iseq_t *iseq, LINK_ANCHOR *const ret,
       case NODE_YIELD:
         ADD_INSN(ret, line, putnil);
         ADD_INSN3(ret, line, defined, INT2FIX(DEFINED_YIELD), 0,
-		  needstr);
+		  PUSH_VAL(DEFINED_YIELD));
         return;
 
       case NODE_BACK_REF:
@@ -5020,16 +5052,17 @@ defined_expr0(rb_iseq_t *iseq, LINK_ANCHOR *const ret,
         ADD_INSN(ret, line, putnil);
         ADD_INSN3(ret, line, defined, INT2FIX(DEFINED_REF),
 		  INT2FIX((node->nd_nth << 1) | (type == NODE_BACK_REF)),
-		  needstr);
+		  PUSH_VAL(DEFINED_GVAR));
         return;
 
       case NODE_SUPER:
       case NODE_ZSUPER:
         ADD_INSN(ret, line, putnil);
         ADD_INSN3(ret, line, defined, INT2FIX(DEFINED_ZSUPER), 0,
-		  needstr);
+		  PUSH_VAL(DEFINED_ZSUPER));
         return;
 
+#undef PUSH_VAL
       case NODE_OP_ASGN1:
       case NODE_OP_ASGN2:
       case NODE_OP_ASGN_OR:
@@ -5069,7 +5102,7 @@ defined_expr(rb_iseq_t *iseq, LINK_ANCHOR *const ret,
 	     const NODE *const node, LABEL **lfinish, VALUE needstr)
 {
     LINK_ELEMENT *lcur = ret->last;
-    defined_expr0(iseq, ret, node, lfinish, needstr);
+    defined_expr0(iseq, ret, node, lfinish, needstr, false);
     if (lfinish[1]) {
 	int line = nd_line(node);
 	LABEL *lstart = NEW_LABEL(line);
@@ -5098,14 +5131,18 @@ compile_defined_expr(rb_iseq_t *iseq, LINK_ANCHOR *const ret, const NODE *const 
 	ADD_INSN1(ret, line, putobject, str);
     }
     else {
-	LABEL *lfinish[2];
+        LABEL *lfinish[3];
 	LINK_ELEMENT *last = ret->last;
 	lfinish[0] = NEW_LABEL(line);
 	lfinish[1] = 0;
+        lfinish[2] = 0;
 	defined_expr(iseq, ret, node->nd_head, lfinish, needstr);
 	if (lfinish[1]) {
 	    ELEM_INSERT_NEXT(last, &new_insn_body(iseq, line, BIN(putnil), 0)->link);
 	    ADD_INSN(ret, line, swap);
+            if (lfinish[2]) {
+                ADD_LABEL(ret, lfinish[2]);
+            }
 	    ADD_INSN(ret, line, pop);
 	    ADD_LABEL(ret, lfinish[1]);
 	}
@@ -6205,6 +6242,7 @@ iseq_compile_pattern_each(rb_iseq_t *iseq, LINK_ANCHOR *const ret, const NODE *c
       case NODE_NIL:
       case NODE_COLON2:
       case NODE_COLON3:
+      case NODE_BEGIN:
         CHECK(COMPILE(ret, "case in literal", node));
         ADD_INSN1(ret, line, checkmatch, INT2FIX(VM_CHECKMATCH_TYPE_CASE));
         ADD_INSNL(ret, line, branchif, matched);
@@ -7409,7 +7447,7 @@ compile_builtin_function_call(rb_iseq_t *iseq, LINK_ANCHOR *const ret, const NOD
 }
 
 static int
-compile_call(rb_iseq_t *iseq, LINK_ANCHOR *const ret, const NODE *const node, const enum node_type type, int line, int popped)
+compile_call(rb_iseq_t *iseq, LINK_ANCHOR *const ret, const NODE *const node, const enum node_type type, int line, int popped, bool assume_receiver)
 {
     /* call:  obj.method(...)
      * fcall: func(...)
@@ -7501,28 +7539,30 @@ compile_call(rb_iseq_t *iseq, LINK_ANCHOR *const ret, const NODE *const node, co
     }
 
     /* receiver */
-    if (type == NODE_CALL || type == NODE_OPCALL || type == NODE_QCALL) {
-        int idx, level;
+    if (!assume_receiver) {
+        if (type == NODE_CALL || type == NODE_OPCALL || type == NODE_QCALL) {
+            int idx, level;
 
-        if (mid == idCall &&
-            nd_type(node->nd_recv) == NODE_LVAR &&
-            iseq_block_param_id_p(iseq, node->nd_recv->nd_vid, &idx, &level)) {
-            ADD_INSN2(recv, nd_line(node->nd_recv), getblockparamproxy, INT2FIX(idx + VM_ENV_DATA_SIZE - 1), INT2FIX(level));
-        }
-        else if (private_recv_p(node)) {
-            ADD_INSN(recv, nd_line(node), putself);
-            flag |= VM_CALL_FCALL;
-        }
-        else {
-            CHECK(COMPILE(recv, "recv", node->nd_recv));
-        }
+            if (mid == idCall &&
+                nd_type(node->nd_recv) == NODE_LVAR &&
+                iseq_block_param_id_p(iseq, node->nd_recv->nd_vid, &idx, &level)) {
+                ADD_INSN2(recv, nd_line(node->nd_recv), getblockparamproxy, INT2FIX(idx + VM_ENV_DATA_SIZE - 1), INT2FIX(level));
+            }
+            else if (private_recv_p(node)) {
+                ADD_INSN(recv, nd_line(node), putself);
+                flag |= VM_CALL_FCALL;
+            }
+            else {
+                CHECK(COMPILE(recv, "recv", node->nd_recv));
+            }
 
-        if (type == NODE_QCALL) {
-            else_label = qcall_branch_start(iseq, recv, &branches, node, line);
+            if (type == NODE_QCALL) {
+                else_label = qcall_branch_start(iseq, recv, &branches, node, line);
+            }
         }
-    }
-    else if (type == NODE_FCALL || type == NODE_VCALL) {
-        ADD_CALL_RECEIVER(recv, line);
+        else if (type == NODE_FCALL || type == NODE_VCALL) {
+            ADD_CALL_RECEIVER(recv, line);
+        }
     }
 
     /* args */
@@ -8050,7 +8090,7 @@ iseq_compile_each0(rb_iseq_t *iseq, LINK_ANCHOR *const ret, const NODE *node, in
 	    lassign = NEW_LABEL(line);
 	    ADD_INSN(ret, line, dup); /* cref cref */
 	    ADD_INSN3(ret, line, defined, INT2FIX(DEFINED_CONST_FROM),
-		      ID2SYM(mid), Qfalse); /* cref bool */
+		      ID2SYM(mid), Qtrue); /* cref bool */
 	    ADD_INSNL(ret, line, branchunless, lassign); /* cref */
 	}
 	ADD_INSN(ret, line, dup); /* cref cref */
@@ -8143,7 +8183,7 @@ iseq_compile_each0(rb_iseq_t *iseq, LINK_ANCHOR *const ret, const NODE *node, in
       case NODE_QCALL: /* obj&.foo */
       case NODE_FCALL: /* foo() */
       case NODE_VCALL: /* foo (variable or call) */
-        if (compile_call(iseq, ret, node, type, line, popped) == COMPILE_NG) {
+        if (compile_call(iseq, ret, node, type, line, popped, false) == COMPILE_NG) {
             goto ng;
         }
         break;
@@ -8662,7 +8702,7 @@ iseq_compile_each0(rb_iseq_t *iseq, LINK_ANCHOR *const ret, const NODE *node, in
       }
       case NODE_CLASS:{
 	const rb_iseq_t *class_iseq = NEW_CHILD_ISEQ(node->nd_body,
-						     rb_sprintf("<class:%"PRIsVALUE">", rb_id2str(node->nd_cpath->nd_mid)),
+						     rb_str_freeze(rb_sprintf("<class:%"PRIsVALUE">", rb_id2str(node->nd_cpath->nd_mid))),
 						     ISEQ_TYPE_CLASS, line);
 	const int flags = VM_DEFINECLASS_TYPE_CLASS |
 	    (node->nd_super ? VM_DEFINECLASS_FLAG_HAS_SUPERCLASS : 0) |
@@ -8679,7 +8719,7 @@ iseq_compile_each0(rb_iseq_t *iseq, LINK_ANCHOR *const ret, const NODE *node, in
       }
       case NODE_MODULE:{
         const rb_iseq_t *module_iseq = NEW_CHILD_ISEQ(node->nd_body,
-						      rb_sprintf("<module:%"PRIsVALUE">", rb_id2str(node->nd_cpath->nd_mid)),
+						      rb_str_freeze(rb_sprintf("<module:%"PRIsVALUE">", rb_id2str(node->nd_cpath->nd_mid))),
 						      ISEQ_TYPE_CLASS, line);
 	const int flags = VM_DEFINECLASS_TYPE_MODULE |
 	    compile_cpath(ret, iseq, node->nd_cpath);
@@ -11389,17 +11429,20 @@ ibf_load_object_string(const struct ibf_load *load, const struct ibf_object_head
     const long len = (long)ibf_load_small_value(load, &reading_pos);
     const char *ptr = load->current_buffer->buff + reading_pos;
 
-    VALUE str = rb_str_new(ptr, len);
-
     if (encindex > RUBY_ENCINDEX_BUILTIN_MAX) {
         VALUE enc_name_str = ibf_load_object(load, encindex - RUBY_ENCINDEX_BUILTIN_MAX);
         encindex = rb_enc_find_index(RSTRING_PTR(enc_name_str));
     }
-    rb_enc_associate_index(str, encindex);
 
-    if (header->internal) rb_obj_hide(str);
-    if (header->frozen)   str = rb_fstring(str);
+    VALUE str;
+    if (header->frozen && !header->internal) {
+        str = rb_enc_interned_str(ptr, len, rb_enc_from_index(encindex));
+    } else {
+        str = rb_enc_str_new(ptr, len, rb_enc_from_index(encindex));
 
+        if (header->internal) rb_obj_hide(str);
+        if (header->frozen)   str = rb_fstring(str);
+    }
     return str;
 }
 
@@ -11631,18 +11674,24 @@ ibf_load_object_complex_rational(const struct ibf_load *load, const struct ibf_o
 static void
 ibf_dump_object_symbol(struct ibf_dump *dump, VALUE obj)
 {
-    VALUE str = rb_sym2str(obj);
-    VALUE str_index = ibf_dump_object(dump, str);
-
-    ibf_dump_write_small_value(dump, str_index);
+    ibf_dump_object_string(dump, rb_sym2str(obj));
 }
 
 static VALUE
 ibf_load_object_symbol(const struct ibf_load *load, const struct ibf_object_header *header, ibf_offset_t offset)
 {
-    VALUE str_index = ibf_load_small_value(load, &offset);
-    VALUE str = ibf_load_object(load, str_index);
-    ID id = rb_intern_str(str);
+    ibf_offset_t reading_pos = offset;
+
+    int encindex = (int)ibf_load_small_value(load, &reading_pos);
+    const long len = (long)ibf_load_small_value(load, &reading_pos);
+    const char *ptr = load->current_buffer->buff + reading_pos;
+
+    if (encindex > RUBY_ENCINDEX_BUILTIN_MAX) {
+        VALUE enc_name_str = ibf_load_object(load, encindex - RUBY_ENCINDEX_BUILTIN_MAX);
+        encindex = rb_enc_find_index(RSTRING_PTR(enc_name_str));
+    }
+
+    ID id = rb_intern3(ptr, len, rb_enc_from_index(encindex));
     return ID2SYM(id);
 }
 

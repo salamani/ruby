@@ -38,7 +38,7 @@
 #include "vm_core.h"
 #include "ractor_core.h"
 
-NORETURN(void rb_raise_jump(VALUE, VALUE));
+NORETURN(static void rb_raise_jump(VALUE, VALUE));
 void rb_ec_clear_current_thread_trace_func(const rb_execution_context_t *ec);
 void rb_ec_clear_all_trace_func(const rb_execution_context_t *ec);
 
@@ -701,6 +701,17 @@ rb_longjmp(rb_execution_context_t *ec, int tag, volatile VALUE mesg, VALUE cause
 
 static VALUE make_exception(int argc, const VALUE *argv, int isstr);
 
+NORETURN(static void rb_exc_exception(VALUE mesg, int tag, VALUE cause));
+
+static void
+rb_exc_exception(VALUE mesg, int tag, VALUE cause)
+{
+    if (!NIL_P(mesg)) {
+	mesg = make_exception(1, &mesg, FALSE);
+    }
+    rb_longjmp(GET_EC(), tag, mesg, cause);
+}
+
 /*!
  * Raises an exception in the current thread.
  * \param[in] mesg an Exception class or an \c Exception object.
@@ -711,10 +722,7 @@ static VALUE make_exception(int argc, const VALUE *argv, int isstr);
 void
 rb_exc_raise(VALUE mesg)
 {
-    if (!NIL_P(mesg)) {
-	mesg = make_exception(1, &mesg, FALSE);
-    }
-    rb_longjmp(GET_EC(), TAG_RAISE, mesg, Qundef);
+    rb_exc_exception(mesg, TAG_RAISE, Qundef);
 }
 
 /*!
@@ -727,10 +735,7 @@ rb_exc_raise(VALUE mesg)
 void
 rb_exc_fatal(VALUE mesg)
 {
-    if (!NIL_P(mesg)) {
-	mesg = make_exception(1, &mesg, FALSE);
-    }
-    rb_longjmp(GET_EC(), TAG_FATAL, mesg, Qnil);
+    rb_exc_exception(mesg, TAG_FATAL, Qnil);
 }
 
 /*!
@@ -891,9 +896,8 @@ rb_make_exception(int argc, const VALUE *argv)
 }
 
 /*! \private
- * \todo can be static?
  */
-void
+static void
 rb_raise_jump(VALUE mesg, VALUE cause)
 {
     rb_execution_context_t *ec = GET_EC();
@@ -1412,9 +1416,8 @@ refinement_superclass(VALUE superclass)
 
 /*!
  * \private
- * \todo can be static?
  */
-void
+static void
 rb_using_refinement(rb_cref_t *cref, VALUE klass, VALUE module)
 {
     VALUE iclass, c, superclass = klass;
@@ -1498,9 +1501,8 @@ using_module_recursive(const rb_cref_t *cref, VALUE klass)
 
 /*!
  * \private
- * \todo can be static?
  */
-void
+static void
 rb_using_module(const rb_cref_t *cref, VALUE module)
 {
     Check_Type(module, T_MODULE);
