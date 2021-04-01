@@ -122,10 +122,10 @@ env:
     arch: arm64
     <<: *gcc-8
 
-  - &s390x-linux
-    name: s390x-linux
-    arch: s390x
-    <<: *gcc-8
+  #- &s390x-linux
+  #  name: s390x-linux
+  #  arch: s390x
+  #  <<: *gcc-8
 
   - &i686-linux
     name: i686-linux
