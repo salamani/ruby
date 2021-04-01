@@ -143,6 +143,10 @@ env:
     before_install:
       - cat  /etc/apt/sources.list
       - uname -a
+      - hostname -I
+      - hostname -i
+      - hostname -a
+      - hostname -y
       - tool/travis_retry.sh sudo -E apt-add-repository -y "ppa:ubuntu-toolchain-r/test"
       - tool/travis_retry.sh sudo bash -c "rm -rf '${TRAVIS_ROOT}/var/lib/apt/lists/'* && exec apt-get update -yq"
       - >-
