@@ -67,6 +67,7 @@ env:
     #       - ubuntu-toolchain-r-test
     before_install:
       - bash -cx "${BEFORE_INSTALL}"
+      - hostname -I
       - tool/travis_retry.sh sudo -E apt-add-repository -y "ppa:ubuntu-toolchain-r/test"
       - tool/travis_retry.sh sudo bash -c "rm -rf '${TRAVIS_ROOT}/var/lib/apt/lists/'* && exec apt-get update -yq"
       - >-
@@ -146,7 +147,6 @@ env:
       - hostname -I
       - hostname -i
       - hostname -a
-      - hostname -y
       - tool/travis_retry.sh sudo -E apt-add-repository -y "ppa:ubuntu-toolchain-r/test"
       - tool/travis_retry.sh sudo bash -c "rm -rf '${TRAVIS_ROOT}/var/lib/apt/lists/'* && exec apt-get update -yq"
       - >-
@@ -182,6 +182,10 @@ env:
       - debugflags=-g0
       - SETARCH='setarch linux32 --verbose --32bit'
     before_install:
+      - uname -a
+      - hostname -I
+      - hostname -i
+      - hostname -a
       - sudo dpkg --add-architecture armhf
       - tool/travis_retry.sh sudo bash -c "rm -rf '${TRAVIS_ROOT}/var/lib/apt/lists/'* && exec apt-get update -yq"
       - >-
