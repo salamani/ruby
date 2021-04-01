@@ -76,6 +76,8 @@ env:
         g++-8
         libffi-dev
         libgdbm-dev
+        libgdbm-compat-dev
+        libgdbm-compat4
         libncurses5-dev
         libncursesw5-dev
         libreadline6-dev
@@ -120,10 +122,10 @@ env:
     arch: arm64
     <<: *gcc-8
 
-  #- &s390x-linux
-  #  name: s390x-linux
-  #  arch: s390x
-  #  <<: *gcc-8
+  - &s390x-linux
+    name: s390x-linux
+    arch: s390x
+    <<: *gcc-8
 
   - &i686-linux
     name: i686-linux
