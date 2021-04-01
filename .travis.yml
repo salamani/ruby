@@ -153,6 +153,8 @@ env:
         libstdc++-8-dev:i386
         libffi-dev:i386
         libffi6:i386
+        libgdbm-compat-dev:i386 
+        libgdbm-compat4:i386
         libgdbm-dev:i386
         libgdbm5:i386
         libncurses5-dev:i386
