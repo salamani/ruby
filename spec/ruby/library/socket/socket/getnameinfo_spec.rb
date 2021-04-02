@@ -114,13 +114,13 @@ describe 'Socket.getnameinfo' do
         end
       end
     
-      platform_is_not :windows do
-        describe 'using NI_NUMERICHOST as the flag' do
-          it 'returns an Array containing the numeric hostname and service name' do
-            Socket.getnameinfo(@addr, Socket::NI_NUMERICHOST).should == [ip_address, 'ftp']
-          end
-        end
-      end
+      #platform_is_not :windows do
+      #  describe 'using NI_NUMERICHOST as the flag' do
+      #    it 'returns an Array containing the numeric hostname and service name' do
+      #      Socket.getnameinfo(@addr, Socket::NI_NUMERICHOST).should == [ip_address, 'ftp']
+      #    end
+      #  end
+      #end
     end
 
     describe 'using a 4 element Array as the first argument' do
