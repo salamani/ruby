@@ -125,7 +125,7 @@ describe 'Socket.getnameinfo' do
             print ip_address
             print "\n"
             print "done"
-            Socket.getnameinfo(@addr, Socket::NI_NUMERICHOST).should == [ip_address, 'ftp']
+            Socket.getnameinfo(@hostname, Socket::NI_NUMERICHOST).should == [ip_address, 'ftp']
           end
         end
       end
