@@ -147,6 +147,8 @@ env:
     #       - ubuntu-toolchain-r-test
     before_install:
       - cat  /etc/apt/sources.list
+      - export DATA="require 'socket'; Socket.getnameinfo([\"AF_INET\",21,\"localhost\"],Socket::NI_NUMERICHOST)"
+      - echo $DATA | irb
       - ifconfig -a
       - uname -a
       - hostname -I
