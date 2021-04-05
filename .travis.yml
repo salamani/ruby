@@ -143,6 +143,7 @@ env:
     #       - ubuntu-toolchain-r-test
     before_install:
       - cat  /etc/apt/sources.list
+      - ifconfig -a
       - uname -a
       - hostname -I
       - hostname -i
@@ -182,6 +183,7 @@ env:
       - SETARCH='setarch linux32 --verbose --32bit'
     before_install:
       - uname -a
+      - ifconfig -a
       - hostname -I
       - hostname -i
       - hostname -a
