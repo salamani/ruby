@@ -151,8 +151,8 @@ env:
       - uname -a
       - hostname -I
       - hostname -i
-      - sysctl -w net.ipv6.conf.all.disable_ipv6=0
-      - sysctl -w net.ipv6.conf.default.disable_ipv6=0
+      - sudo sysctl -w net.ipv6.conf.all.disable_ipv6=0
+      - sudo sysctl -w net.ipv6.conf.default.disable_ipv6=0
       - grep "disable_ipv6" /etc/sysctl.conf /etc/sysctl.d/*.conf
       - grep CONFIG_IPV6 /boot/config-$(uname -r)
       - tool/travis_retry.sh sudo -E apt-add-repository -y "ppa:ubuntu-toolchain-r/test"
