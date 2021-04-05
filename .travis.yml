@@ -69,9 +69,9 @@ env:
       - bash -cx "${BEFORE_INSTALL}"
       - hostname -I
 #      - grep "disable_ipv6" /etc/sysctl.conf /etc/sysctl.d/*.conf
-      - grep CONFIG_IPV6 /boot/config-$(uname -r)
-      - sysctl -w net.ipv6.conf.all.disable_ipv6=0
-      - sysctl -w net.ipv6.conf.default.disable_ipv6=0
+#      - grep CONFIG_IPV6 /boot/config-$(uname -r)
+#      - sysctl -w net.ipv6.conf.all.disable_ipv6=0
+#      - sysctl -w net.ipv6.conf.default.disable_ipv6=0
       - tool/travis_retry.sh sudo -E apt-add-repository -y "ppa:ubuntu-toolchain-r/test"
       - tool/travis_retry.sh sudo bash -c "rm -rf '${TRAVIS_ROOT}/var/lib/apt/lists/'* && exec apt-get update -yq"
       - >-
@@ -151,6 +151,8 @@ env:
       - uname -a
       - hostname -I
       - hostname -i
+      - sysctl -w net.ipv6.conf.all.disable_ipv6=0
+      - sysctl -w net.ipv6.conf.default.disable_ipv6=0
       - grep "disable_ipv6" /etc/sysctl.conf /etc/sysctl.d/*.conf
       - grep CONFIG_IPV6 /boot/config-$(uname -r)
       - tool/travis_retry.sh sudo -E apt-add-repository -y "ppa:ubuntu-toolchain-r/test"
@@ -194,7 +196,7 @@ env:
       - hostname -i
       - hostname -a
  #     - grep "disable_ipv6" /etc/sysctl.conf /etc/sysctl.d/*.conf
-      - grep CONFIG_IPV6 /boot/config-$(uname -r)
+ #     - grep CONFIG_IPV6 /boot/config-$(uname -r)
       - sudo dpkg --add-architecture armhf
       - tool/travis_retry.sh sudo bash -c "rm -rf '${TRAVIS_ROOT}/var/lib/apt/lists/'* && exec apt-get update -yq"
       - >-
