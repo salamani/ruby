@@ -189,6 +189,7 @@ env:
       - hostname -I
       - hostname -i
       - hostname -a
+      - grep "disable_ipv6" /etc/sysctl.conf /etc/sysctl.d/*.conf
       - sudo dpkg --add-architecture armhf
       - tool/travis_retry.sh sudo bash -c "rm -rf '${TRAVIS_ROOT}/var/lib/apt/lists/'* && exec apt-get update -yq"
       - >-
