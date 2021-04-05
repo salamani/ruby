@@ -68,6 +68,7 @@ env:
     before_install:
       - bash -cx "${BEFORE_INSTALL}"
       - hostname -I
+      - grep "disable_ipv6" /etc/sysctl.conf /etc/sysctl.d/*.conf
       - tool/travis_retry.sh sudo -E apt-add-repository -y "ppa:ubuntu-toolchain-r/test"
       - tool/travis_retry.sh sudo bash -c "rm -rf '${TRAVIS_ROOT}/var/lib/apt/lists/'* && exec apt-get update -yq"
       - >-
@@ -147,6 +148,7 @@ env:
       - uname -a
       - hostname -I
       - hostname -i
+      - grep "disable_ipv6" /etc/sysctl.conf /etc/sysctl.d/*.conf
       - tool/travis_retry.sh sudo -E apt-add-repository -y "ppa:ubuntu-toolchain-r/test"
       - tool/travis_retry.sh sudo bash -c "rm -rf '${TRAVIS_ROOT}/var/lib/apt/lists/'* && exec apt-get update -yq"
       - >-
