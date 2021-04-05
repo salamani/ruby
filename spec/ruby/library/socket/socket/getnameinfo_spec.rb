@@ -117,6 +117,16 @@ describe 'Socket.getnameinfo' do
       platform_is_not :windows do
         describe 'using NI_NUMERICHOST as the flag' do
           it 'returns an Array containing the numeric hostname and service name' do
+            print "Addr -- "
+            print @addr
+            print "\nHostname -- "
+            print @hostname
+            print "\nSocket::NI_NUMERICHOST -- "
+            print Socket::NI_NUMERICHOST
+            print "\nip_address -- "
+            print ip_address
+            print "\n"
+            print "done"
             Socket.getnameinfo(@hostname, Socket::NI_NUMERICHOST).should == [ip_address, 'ftp']
           end
         end
