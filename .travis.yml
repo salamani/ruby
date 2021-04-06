@@ -150,15 +150,17 @@ env:
       - export DATA="require 'socket'; Socket.getnameinfo([\"AF_INET\",21,\"localhost\"],Socket::NI_NUMERICHOST)"
       - echo $DATA | irb
       - cat /etc/hosts
-      - cat /etc/host.aliases
-      - ifconfig -a
-      - uname -a
-      - hostname -I
-      - hostname -i
-      - sudo sysctl -w net.ipv6.conf.all.disable_ipv6=0
-      - sudo sysctl -w net.ipv6.conf.default.disable_ipv6=0
-      - grep "disable_ipv6" /etc/sysctl.conf /etc/sysctl.d/*.conf
-      - grep CONFIG_IPV6 /boot/config-$(uname -r)
+      - sed -i '/127.0.1.1/d' /etc/hosts
+      - cat /etc/hosts
+      #- ifconfig -a
+      #- uname -a
+      #- hostname -I
+      #- hostname -i
+      #- sudo sysctl -w net.ipv6.conf.all.disable_ipv6=0
+      #- sudo sysctl -w net.ipv6.conf.default.disable_ipv6=0
+      #- grep "disable_ipv6" /etc/sysctl.conf /etc/sysctl.d/*.conf
+      #- grep CONFIG_IPV6 /boot/config-$(uname -r)
+      #- cat /etc/hosts
       - tool/travis_retry.sh sudo -E apt-add-repository -y "ppa:ubuntu-toolchain-r/test"
       - tool/travis_retry.sh sudo bash -c "rm -rf '${TRAVIS_ROOT}/var/lib/apt/lists/'* && exec apt-get update -yq"
       - >-
@@ -194,13 +196,13 @@ env:
       - debugflags=-g0
       - SETARCH='setarch linux32 --verbose --32bit'
     before_install:
-      - uname -a
-      - ifconfig -a
-      - hostname -I
-      - hostname -i
-      - hostname -a
-      - cat /etc/hosts
-      - cat /etc/host.aliases
+ #     - uname -a
+ #     - ifconfig -a
+ #     - hostname -I
+ #     - hostname -i
+ #     - hostname -a
+ #     - cat /etc/hosts
+ #     - cat /etc/host.aliases
  #     - grep "disable_ipv6" /etc/sysctl.conf /etc/sysctl.d/*.conf
  #     - grep CONFIG_IPV6 /boot/config-$(uname -r)
       - sudo dpkg --add-architecture armhf
