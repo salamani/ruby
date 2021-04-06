@@ -150,7 +150,7 @@ env:
       - export DATA="require 'socket'; Socket.getnameinfo([\"AF_INET\",21,\"localhost\"],Socket::NI_NUMERICHOST)"
       - echo $DATA | irb
       - cat /etc/hosts
-      - sed -i '/127.0.1.1/d' /etc/hosts
+      - sudo sed -i '/127.0.1.1/d' /etc/hosts
       - cat /etc/hosts
       #- ifconfig -a
       #- uname -a
