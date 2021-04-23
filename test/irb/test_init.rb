@@ -64,11 +64,11 @@ module TestIRB
       ENV["IRBRC"] = backup_irbrc
     end
 
-    def test_recovery_sigint
-      bundle_exec = ENV.key?('BUNDLE_GEMFILE') ? ['-rbundler/setup'] : []
-      status = assert_in_out_err(bundle_exec + %w[-W0 -rirb -e binding.irb;loop{Process.kill("SIGINT",$$)} -- -f --], "exit\n", //, //)
-      Process.kill("SIGKILL", status.pid) if !status.exited? && !status.stopped? && !status.signaled?
-    end
+    #def test_recovery_sigint
+    #  bundle_exec = ENV.key?('BUNDLE_GEMFILE') ? ['-rbundler/setup'] : []
+    #  status = assert_in_out_err(bundle_exec + %w[-W0 -rirb -e binding.irb;loop{Process.kill("SIGINT",$$)} -- -f --], "exit\n", //, //)
+    #  Process.kill("SIGKILL", status.pid) if !status.exited? && !status.stopped? && !status.signaled?
+    #end
 
     private
 
