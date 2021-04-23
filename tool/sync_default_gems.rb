@@ -95,12 +95,16 @@ def sync_default_gems(gem)
     cp_r(Dir.glob("#{upstream}/lib/rubygems*"), "lib")
     cp_r("#{upstream}/test/rubygems", "test")
   when "bundler"
-    rm_rf(%w[lib/bundler lib/bundler.rb libexec/bundler libexec/bundle spec/bundler] + Dir.glob("man/{bundle*,gemfile*}"))
+    rm_rf(%w[lib/bundler lib/bundler.rb libexec/bundler libexec/bundle spec/bundler tool/bundler/*] + Dir.glob("man/{bundle*,gemfile*}"))
     cp_r(Dir.glob("#{upstream}/bundler/lib/bundler*"), "lib")
     cp_r(Dir.glob("#{upstream}/bundler/exe/bundle*"), "libexec")
     cp_r("#{upstream}/bundler/bundler.gemspec", "lib/bundler")
     cp_r("#{upstream}/bundler/spec", "spec/bundler")
+    cp_r(Dir.glob("#{upstream}/bundler/tool/bundler/test_gems*"), "tool/bundler")
+    cp_r(Dir.glob("#{upstream}/bundler/tool/bundler/rubocop_gems*"), "tool/bundler")
+    cp_r(Dir.glob("#{upstream}/bundler/tool/bundler/standard_gems*"), "tool/bundler")
     cp_r(Dir.glob("#{upstream}/bundler/man/*.{1,5,1\.txt,5\.txt,ronn}"), "man")
+    `git checkout lib/bundler/bundler.gemspec`
     rm_rf(%w[spec/bundler/support/artifice/vcr_cassettes])
   when "rdoc"
     rm_rf(%w[lib/rdoc lib/rdoc.rb test/rdoc libexec/rdoc libexec/ri])
@@ -170,6 +174,7 @@ def sync_default_gems(gem)
     cp_r("#{upstream}/test/io/console", "test/io")
     mkdir_p("ext/io/console/lib")
     cp_r("#{upstream}/lib/io/console", "ext/io/console/lib")
+    rm_rf("ext/io/console/lib/console/ffi")
     cp_r("#{upstream}/io-console.gemspec", "ext/io/console")
     `git checkout ext/io/console/depend`
   when "io-nonblock"
@@ -355,6 +360,7 @@ IGNORE_FILE_PATTERN =
   |\.git.*
   |[A-Z]\w+file
   |COPYING
+  |rakelib\/
   )\z/x
 
 def message_filter(repo, sha)
@@ -439,7 +445,7 @@ def sync_default_gems_with_commits(gem, ranges, edit: nil)
         system(*%W"git reset HEAD --", *ignore)
         File.unlink(*ignore)
         ignore = IO.popen(%W"git status --porcelain" + ignore, &:readlines).map! {|line| line[/^.. (.*)/, 1]}
-        system(*%W"git checkout HEAD --", *ignore)
+        system(*%W"git checkout HEAD --", *ignore) unless ignore.empty?
       end
       unless conflict.empty?
         if edit

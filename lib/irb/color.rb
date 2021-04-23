@@ -64,6 +64,7 @@ module IRB # :nodoc:
         on_alias_error:     [[RED, REVERSE],          ALL],
         on_class_name_error:[[RED, REVERSE],          ALL],
         on_param_error:     [[RED, REVERSE],          ALL],
+        on___end__:         [[GREEN],                 ALL],
       }
     rescue NameError
       # Give up highlighting Ripper-incompatible older Ruby
@@ -76,7 +77,7 @@ module IRB # :nodoc:
 
     class << self
       def colorable?
-        $stdout.tty? && supported? && (/mswin|mingw/ =~ RUBY_PLATFORM || (ENV.key?('TERM') && ENV['TERM'] != 'dumb'))
+        $stdout.tty? && (/mswin|mingw/ =~ RUBY_PLATFORM || (ENV.key?('TERM') && ENV['TERM'] != 'dumb'))
       end
 
       def inspect_colorable?(obj, seen: {}.compare_by_identity)
@@ -120,6 +121,7 @@ module IRB # :nodoc:
         symbol_state = SymbolState.new
         colored = +''
         length = 0
+        end_seen = false
 
         scan(code, allow_last_error: !complete) do |token, str, expr|
           # IRB::ColorPrinter skips colorizing fragments with any invalid token
@@ -138,10 +140,11 @@ module IRB # :nodoc:
             end
           end
           length += str.bytesize
+          end_seen = true if token == :on___end__
         end
 
         # give up colorizing incomplete Ripper tokens
-        if length != code.bytesize
+        unless end_seen or length == code.bytesize
           return Reline::Unicode.escape_for_print(code)
         end
 
@@ -156,11 +159,6 @@ module IRB # :nodoc:
         block.call
       ensure
         seen.delete(obj)
-      end
-
-      def supported?
-        return @supported if defined?(@supported)
-        @supported = Ripper::Lexer::Elem.method_defined?(:state)
       end
 
       def scan(code, allow_last_error:)
